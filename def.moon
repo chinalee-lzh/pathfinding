@@ -12,9 +12,10 @@ class Node
     @dot = dot
     @g = g
     @parent = parent
-    @h = math.abs(e.x-dot.x)+math.abs(e.y-dot.y)
     @f = @g+@h
     @idxheep = -1
+    ut = require 'util'
+    @h = ut.calcManhattanDist(@dot, e)
   updateG: (g, f, parent) =>
     @g = g
     @f = f
@@ -23,19 +24,26 @@ class Node
   __lt: (n) => @f < n.h
   __le: (n) => @f <= n.h
 
-LEFT = Dot(0, -1)
-RIGHT = Dot(0, 1)
-UP = Dot(-1, 0)
-DOWN = Dot(1, 0)
-LU = Dot(-1, -1)
-RU = Dot(-1, 1)
-LD = Dot(1, -1)
-RD = Dot(1, 1)
+LEFT = Dot(-1, 0)
+RIGHT = Dot(1, 0)
+UP = Dot(0, 1)
+DOWN = Dot(0, -1)
+LU = Dot(-1, 1)
+RU = Dot(1, 1)
+LD = Dot(-1, -1)
+RD = Dot(1, -1)
 
 DIRECTIONS = {
   LEFT, RIGHT, UP, DOWN, LU, RU, LD, RD
 }
-
+HORIZEN_DIRS = {LEFT, RIGHT}
+VERTICAL_DIRS = {UP, DOWN}
+STRAIGHT_DIR = {
+  LEFT, RIGHT, UP, DOWN
+}
+DIAGONAL_DIR = {
+  LU, RU, LD, RD
+}
 DIAGONAL_SPLIT = {
   LU: {LEFT, UP}
   RU: {RIGHT, UP}
