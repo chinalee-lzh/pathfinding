@@ -3,13 +3,27 @@ UT = require 'util'
 MAP = require 'map'
 
 compare = (a, b) -> a.f < b.f
-checkForceNeighbor = (currx, curry, currdir, dirs) ->
+findForceNeighbor_straight = (dot, pdir, dirs) ->
+  local rst
   for v in *dirs
-    vx, vy = currx+v.x, curry+v.y
-    if MAP\isObstacle(vx, vy)
-      nx, ny = vx+currdir.x, vy
-      return true if MAP\isAvailable(nx, ny)
-  false
+    vdot = dot\add(v)
+    continue unless MAP\isDotObstacle(vdot)
+    ndot = vdot\add(pdir)
+    continue unless MAP\isDotAvailable(ndot)
+    rst = rst or {}
+    table.insert(rst, ndot)
+  rst
+findForceNeighbor_diagonal = (dot, pdir) ->
+  local rst
+  pdot = dot\sub(pdir)
+  for v in DIAGONAL_SPLIT[pdir]
+    vdot = pdot\add(v)
+    continue unless map\isDotObstacle(vdot)
+    ndot = vdot\add(v)
+    continue unless MAP\isDotAvailable(ndot)
+    rst = rst or {}
+    table.insert(rst, ndot)
+  rst
 findJumpPoint_Straight = (dot, dir, e) ->
   x, y = dot.x, dot.y
   dirs = if UT.isHorizenDir(dir)
@@ -19,26 +33,32 @@ findJumpPoint_Straight = (dot, dir, e) ->
   while true
     currx, curry = x+dir.x, y+dir.y
     d = Dot(currx, curry)
-    return true, {d} if e\equal(d)
+    return true, d if e\equal(d)
     return false unless MAP\isAvailable(currx, curry)
-    if checkForceNeighbor(currx, curry, dir, dirs)
-      return true, {d}
+    if checkForceNeighbor_straight(currx, curry, dir, dirs)
+      return true, d
     else
       x, y = currx, curry
-findJumpPoint_Diagonal = (dot, dir, e) ->
-  while true
-    d = dot\add(dir)
-    return true, {d} if d\equal(e)
-    jps = {}
-    for v in *DIAGONAL_SPLIT[dir]
-      ok, jp = findJumpPoint_Straight(d, v)
-      table.insert(jps, jp) if ok
-    return #jps > 0, jps
-findJumpPoint = (dot, dir, e) ->
-  if UT.isStraightDir(dir)
-    findJumpPoint_Straight(dot, dir, e)
-  else
-    findJumpPoint_Diagonal(dot, dir, e)
+findJumpPoint = (dot, pdir, e) ->
+  jps = {}
+  for dir in *STRAIGHT_DIRS
+    ok, jp = findJumpPoint_Straight(dot, dir, e)
+    table.insert(jps, jp) if ok
+  for dir in *DIAGONAL_DIRS
+    while true 
+      d = dot\add(dir)
+      break unless MAP\isDotAvailable(d)
+      if d\equal(e)
+        table.insert(jps, jp)
+        break
+      else
+        if checkForceNeighbor_diagonal(d.x, d.y, dir)
+          table.insert(jps, d)
+        else
+          for v in *DIAGONAL_SPLIT[dir]
+            ok, jp = findJumpPoint_Straight(d, v, e)
+            table.insert(jps, jp) if ok
+  return jps
 dump = (node, out) ->
   out = out or {}
   while node ~= nil
@@ -50,7 +70,7 @@ jps = (s, e) ->
   return print('s equal e') if s\equal(e)
   lopen, dopen = Heap(compare), {}
   lclosed, dclosed = {}, {}
-  snode = Node(s, 0, e)
+  snode = Node(s)
   snode.idxheep = lopen\insert(snode)
   add2dict(dopen, s, snode)
   while true

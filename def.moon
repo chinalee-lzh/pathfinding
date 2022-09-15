@@ -6,23 +6,20 @@ class Dot
     @y = y or 0
   equal: (d) => @x == d.x and @y == d.y
   add:(d) => Dot(@x+d.x, @y+d.y)
+  sub:(d) => Dot(@x-d.x, @y-d.y)
   tostring: => "[#{@x}, #{@y}]"
 class Node
-  new: (dot, g, e, parent) =>
+  new: (dot, parent) =>
     @dot = dot
-    @g = g
     @parent = parent
-    @f = @g+@h
+    @g = 0
+    @h = 0
+    @f = 0
     @idxheep = -1
-    ut = require 'util'
-    @h = ut.calcManhattanDist(@dot, e)
   updateG: (g, f, parent) =>
     @g = g
     @f = f
     @parent = parent
-  __eq: (n) => @f == n.h
-  __lt: (n) => @f < n.h
-  __le: (n) => @f <= n.h
 
 LEFT = Dot(-1, 0)
 RIGHT = Dot(1, 0)
@@ -38,10 +35,10 @@ DIRECTIONS = {
 }
 HORIZEN_DIRS = {LEFT, RIGHT}
 VERTICAL_DIRS = {UP, DOWN}
-STRAIGHT_DIR = {
+STRAIGHT_DIRS = {
   LEFT, RIGHT, UP, DOWN
 }
-DIAGONAL_DIR = {
+DIAGONAL_DIRS = {
   LU, RU, LD, RD
 }
 DIAGONAL_SPLIT = {
