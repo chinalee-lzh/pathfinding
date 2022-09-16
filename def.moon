@@ -16,10 +16,15 @@ class Node
     @h = 0
     @f = 0
     @idxheep = -1
-  updateG: (g, f, parent) =>
+  setCost: (g, h) =>
     @g = g
-    @f = f
-    @parent = parent
+    @h = h
+    @f = @g+@h
+    @
+class JPSNode extends Node
+  new: (availableDirs, ...) =>
+    super(...)
+    @availableDirs = availableDirs
 
 LEFT = Dot(-1, 0)
 RIGHT = Dot(1, 0)
