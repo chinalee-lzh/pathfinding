@@ -22,9 +22,9 @@ class Node
     @f = @g+@h
     @
 class JPSNode extends Node
-  new: (availableDirs, ...) =>
+  new: (jumpDirs, ...) =>
     super(...)
-    @availableDirs = availableDirs
+    @jumpDirs = jumpDirs
 
 LEFT = Dot(-1, 0)
 RIGHT = Dot(1, 0)
@@ -45,10 +45,4 @@ STRAIGHT_DIRS = {
 }
 DIAGONAL_DIRS = {
   LU, RU, LD, RD
-}
-DIAGONAL_SPLIT = {
-  LU: {LEFT, UP}
-  RU: {RIGHT, UP}
-  LD: {LEFT, DOWN}
-  RD: {RIGHT, DOWN}
 }

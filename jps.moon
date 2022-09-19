@@ -1,6 +1,7 @@
 require 'def'
 UT = require 'util'
 MAP = require 'map'
+Heap = require 'heap'
 
 compare = (a, b) -> a.f < b.f
 findForceNeighbor_straight = (dot, pdir) ->
@@ -20,83 +21,59 @@ findForceNeighbor_straight = (dot, pdir) ->
 findForceNeighbor_diagonal = (dot, pdir) ->
   local rst
   pdot = dot\sub(pdir)
-  for v in DIAGONAL_SPLIT[pdir]
+  for v in *UT.getDiagonalSplit(pdir)
     vdot = pdot\add(v)
-    continue unless map\isDotObstacle(vdot)
+    continue unless MAP\isDotObstacle(vdot)
     ndot = vdot\add(v)
     continue unless MAP\isDotAvailable(ndot)
     rst = rst or {}
     table.insert(rst, ndot)
   rst ~= nil, rst
-findJumpPoint_Straight = (pnode, dir, e) ->
-  d = Dot(pnode.dotdot.x, pnode.dot.y)
-  g = pnode.g
-  availableDirs = {dir}
-  jpnode = JPSNode(availableDirs, d, pnode)
-  flag = false
+findJumpPoint_Straight = (dot, dir, e) ->
+  d = Dot(dot.x, dot.y)
+  g = 0
+  jumpDirs = {dir}
+  ok = false
   while true
-    d\add(dir)
+    d = d\add(dir)
     break unless MAP\isDotAvailable(d)
     g += MAP.STRAIGHT_DIST
-    ok, fns = if e\equal(d)
-      true, nil
+    ok, fns = if d\equal(e)
+      true, {}
     else
       findForceNeighbor_straight(d, dir)
     if ok
-      for v in *fns do table.insert(jpnode.availableDirs, v\sub(d)) unless fns == nil
-      jpnode.dot = d
-      jpnode\setCost(g, UT.calcManhattanDist(d, e))
-      flag = true
+      for v in *fns do table.insert(jumpDirs, v\sub(d))
       break
-  return flag, jpnode
-findJumpPoint_Diagonal = (pnode, dir, e) ->
-  d = Dot(pnode.dot.x, pnode.dot.y)
-  g = pnode.g
-  availableDirs = {dir}
-  jpnode = JPSNode(availableDirs, d, pnode)
-  flag = false
+  return ok, d, jumpDirs, g
+findJumpPoint_Diagonal = (dot, dir, e) ->
+  d = Dot(dot.x, dot.y)
+  g = 0
+  jumpDirs = {dir}
+  ok = false
   while true
-    d = dot\add(dir)
+    d = d\add(dir)
     break unless MAP\isDotAvailable(d)
     g += MAP.DIAGONAL_DIST
     ok, fns = if d\equal(e)
-      true, nil
+      true, {}
     else
       findForceNeighbor_diagonal(d, dir)
     if ok
-      for v in *fns do table.insert(jpnode.availableDirs, v\sub(d)) unless fns == nil
-      jpnode.dot = d
-      jpnode\setCost(g, UT.calcManhattanDist(d, e))
-      flag = true
-      break
-findJumpPoint = (dot, pdir, e) ->
-  jps = {}
-  for dir in *STRAIGHT_DIRS
-    ok, jp = findJumpPoint_Straight(dot, dir, e)
-    table.insert(jps, jp) if ok
-  for dir in *DIAGONAL_DIRS
-    while true 
-      d = dot\add(dir)
-      break unless MAP\isDotAvailable(d)
-      if d\equal(e)
-        table.insert(jps, jp)
-        break
-      else
-        if checkForceNeighbor_diagonal(d.x, d.y, dir)
-          table.insert(jps, d)
-        else
-          for v in *DIAGONAL_SPLIT[dir]
-            ok, jp = findJumpPoint_Straight(d, v, e)
-            table.insert(jps, jp) if ok
-  return jps
+      for v in *fns do table.insert(jumpDirs, v\sub(d))
+      for v in *UT.getDiagonalSplit(dir) do table.insert(jumpDirs, v)
+    else
+      for v in *UT.getDiagonalSplit(dir)
+        flag, djp, dirs = findJumpPoint_Straight(d, v, e)
+        table.insert(jumpDirs, v) if flag
+        ok = ok or flag
+    break if ok
+  return ok, d, jumpDirs, g
 findJumpPoint = (dot, dir, e) ->
-  jps = {}
   if UT.isStraightDir(dir)
-    ok, jp, fns = findJumpPoint_Straight(dot, dir, e)
-    table.insert(jps, jp) if ok
+    findJumpPoint_Straight(dot, dir, e)
   else
-    while true
-
+    findJumpPoint_Diagonal(dot, dir, e)
 dump = (node, out) ->
   out = out or {}
   while node ~= nil
@@ -123,16 +100,27 @@ jps = (s, e) ->
     node = hopen\pop!
     return dump(node) if node.dot\equal(e)
     add2dict(dclosed, node.dot, node)
-    for dir in *node.availableDirs
-      ok, dots = findJumpPoint(node.dot, dir, e)
+    for dir in *node.jumpDirs
+      ok, d, jumpDirs, g = findJumpPoint(node.dot, dir, e)
       continue unless ok
-      for v in *dots
-        g = UT.calcManhattanDist(v, s)
-        n = Node(v, g, e, node)
-        hopen\insert(n)
-
+      ok, n = indict(dopen, d)
+      newg = node.g+g
+      if ok
+        print('----------------- find already in dopen')
+        newf = newg+n.h
+        if newf < node.f
+          n\setCost(newg, n.h)
+          n.idxheep = hopen\update(n.idxheep, -1)
+      else
+        jpnode = JPSNode(jumpDirs, d, node)\setCost(newg, UT.calcManhattanDist(d, e))
+        jpnode.idxheep = hopen\insert(jpnode)
 MAP\init!
 print(MAP\dump!)
-ok, dots = findJumpPoint(Dot(20, 3), LEFT)
-print(ok)
-for v in *dots do print(v\tostring!) if ok
+jps(Dot(3, 7), Dot(11, 7))
+-- ok, d, jumpDirs, g = findJumpPoint(Dot(20, 3), LU, Dot(17, 3))
+-- print(ok)
+-- if ok
+--   print(d\tostring!)
+--   print('jump dirs')
+--   for v in *jumpDirs do print("  #{v\tostring!}")
+--   print('g =', g)
